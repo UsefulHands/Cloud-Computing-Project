@@ -3,9 +3,10 @@ package com.school_project.api.controller;
 import com.school_project.api.dto.WorkspaceDtos.CreateTaskRequest;
 import com.school_project.api.dto.WorkspaceDtos.NoteResponse;
 import com.school_project.api.dto.WorkspaceDtos.TaskResponse;
-import com.school_project.api.dto.WorkspaceDtos.TaskStatus;
 import com.school_project.api.dto.WorkspaceDtos.UpdateTaskRequest;
 import com.school_project.api.dto.WorkspaceDtos.UpsertNoteRequest;
+import com.school_project.api.service.WorkspaceService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,72 +18,60 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.Instant;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/groups/{groupId}/workspace")
+@RequiredArgsConstructor
 public class WorkspaceController {
+
+    private final WorkspaceService workspaceService;
 
     @GetMapping("/notes")
     public List<NoteResponse> listNotes(@PathVariable Long groupId) {
-        return List.of(new NoteResponse(1L, groupId, "Exam topics", "Virtualization, containers, scaling.", 1L, Instant.now()));
+        return workspaceService.listNotes(groupId);
     }
 
     @PostMapping("/notes")
     @ResponseStatus(HttpStatus.CREATED)
     public NoteResponse createNote(@PathVariable Long groupId, @RequestBody UpsertNoteRequest request) {
-        return new NoteResponse(1L, groupId, request.title(), request.content(), 1L, Instant.now());
+        return workspaceService.createNote(groupId, request);
     }
 
     @PutMapping("/notes/{noteId}")
     public NoteResponse updateNote(@PathVariable Long groupId,
                                    @PathVariable Long noteId,
                                    @RequestBody UpsertNoteRequest request) {
-        return new NoteResponse(noteId, groupId, request.title(), request.content(), 1L, Instant.now());
+        return workspaceService.updateNote(groupId, noteId, request);
     }
 
     @DeleteMapping("/notes/{noteId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteNote(@PathVariable Long groupId, @PathVariable Long noteId) {
+        workspaceService.deleteNote(groupId, noteId);
     }
 
     @GetMapping("/tasks")
     public List<TaskResponse> listTasks(@PathVariable Long groupId) {
-        return List.of(sampleTask(groupId, 1L));
+        return workspaceService.listTasks(groupId);
     }
 
     @PostMapping("/tasks")
     @ResponseStatus(HttpStatus.CREATED)
     public TaskResponse createTask(@PathVariable Long groupId, @RequestBody CreateTaskRequest request) {
-        Instant now = Instant.now();
-        return new TaskResponse(1L, groupId, request.title(), request.description(), request.assignedTo(), request.dueAt(), TaskStatus.TODO, now, now);
+        return workspaceService.createTask(groupId, request);
     }
 
     @PutMapping("/tasks/{taskId}")
     public TaskResponse updateTask(@PathVariable Long groupId,
                                    @PathVariable Long taskId,
                                    @RequestBody UpdateTaskRequest request) {
-        return new TaskResponse(
-                taskId,
-                groupId,
-                request.title(),
-                request.description(),
-                request.assignedTo(),
-                request.dueAt(),
-                request.status(),
-                Instant.now(),
-                Instant.now()
-        );
+        return workspaceService.updateTask(groupId, taskId, request);
     }
 
     @DeleteMapping("/tasks/{taskId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteTask(@PathVariable Long groupId, @PathVariable Long taskId) {
-    }
-
-    private TaskResponse sampleTask(Long groupId, Long taskId) {
-        Instant now = Instant.now();
-        return new TaskResponse(taskId, groupId, "Read MapReduce paper", "Summarize key points before session.", 2L, now.plusSeconds(86400), TaskStatus.IN_PROGRESS, now, now);
+        workspaceService.deleteTask(groupId, taskId);
     }
 }
