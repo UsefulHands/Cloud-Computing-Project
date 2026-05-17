@@ -13,19 +13,19 @@ services:
       timeout: 5s
       retries: 10
 
-  flyway:
-    image: flyway/flyway:11
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      FLYWAY_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
-      FLYWAY_USER: ${DB_USER}
-      FLYWAY_PASSWORD: ${DB_PASSWORD}
-      FLYWAY_LOCATIONS: filesystem:/flyway/sql
-    volumes:
-      - ../../backend/src/main/resources/db/migration:/flyway/sql:ro
-    command: migrate
+  # flyway:
+  #   image: flyway/flyway:11
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   environment:
+  #     FLYWAY_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
+  #     FLYWAY_USER: ${DB_USER}
+  #     FLYWAY_PASSWORD: ${DB_PASSWORD}
+  #     FLYWAY_LOCATIONS: filesystem:/flyway/sql
+  #   volumes:
+  #     - ../../backend/src/main/resources/db/migration:/flyway/sql:ro
+  #   command: migrate
 
   backend:
     build:
@@ -40,9 +40,9 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
-    depends_on:
-      flyway:
-        condition: service_completed_successfully
+    # depends_on:
+    #   flyway:
+    #     condition: service_completed_successfully
     expose:
       - "8080"
 
@@ -54,7 +54,6 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-
 
 volumes:
   pgdata:
