@@ -135,6 +135,12 @@ function App() {
     return () => { isActive = false; };
   }, [apiState, selectedGroupId]);
 
+  const selectedGroup = groups.find((g) => g.id === selectedGroupId) || null;
+  const isMember = selectedGroup?.myMembershipStatus === 'APPROVED';
+  const isPending = selectedGroup?.myMembershipStatus === 'PENDING';
+  const isOwner = !!currentUser && selectedGroup?.ownerId === currentUser.userId;
+  const myGroups = groups.filter((g) => g.myMembershipStatus === 'APPROVED');
+
   useEffect(() => {
     if (!selectedGroupId || !isOwner || apiState !== 'online') { setPendingRequests([]); return; }
     api.listPendingRequests(selectedGroupId)
@@ -152,12 +158,6 @@ function App() {
     }, 1000);
     return () => window.clearInterval(interval);
   }, [timerRunning]);
-
-  const selectedGroup = groups.find((g) => g.id === selectedGroupId) || null;
-  const isMember = selectedGroup?.myMembershipStatus === 'APPROVED';
-  const isPending = selectedGroup?.myMembershipStatus === 'PENDING';
-  const isOwner = !!currentUser && selectedGroup?.ownerId === currentUser.userId;
-  const myGroups = groups.filter((g) => g.myMembershipStatus === 'APPROVED');
   const subjects = useMemo(() => ['All', ...Array.from(new Set(groups.map((g) => g.subject).filter(Boolean)))], [groups]);
   const filteredGroups = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -176,14 +176,14 @@ function App() {
   }
 
   async function handleJoinGroup(groupId) {
-    if (apiState !== 'online') { showToast('Backend bağlantısı gerekli.', 'error'); return; }
+    if (apiState !== 'online') { showToast('Backend connection required.', 'error'); return; }
     try {
       await api.joinGroup(groupId);
       const result = await api.listGroups();
       setGroups(Array.isArray(result) ? result : []);
-      showToast('Katılım isteğiniz gönderildi!', 'success');
+      showToast('Join request sent!', 'success');
     } catch (err) {
-      showToast(err.response?.data?.detail || 'Katılım isteği gönderilemedi.', 'error');
+      showToast(err.response?.data?.detail || 'Could not send join request.', 'error');
     }
   }
 
@@ -194,9 +194,9 @@ function App() {
       setPendingRequests((cur) => cur.filter((r) => r.userId !== userId));
       const result = await api.listGroups();
       setGroups(Array.isArray(result) ? result : []);
-      showToast('Üyelik onaylandı.', 'success');
+      showToast('Membership approved.', 'success');
     } catch (err) {
-      showToast(err.response?.data?.detail || 'Onaylama başarısız.', 'error');
+      showToast(err.response?.data?.detail || 'Approval failed.', 'error');
     }
   }
 
@@ -205,9 +205,9 @@ function App() {
     try {
       await api.rejectJoinRequest(selectedGroupId, userId);
       setPendingRequests((cur) => cur.filter((r) => r.userId !== userId));
-      showToast('İstek reddedildi.', 'info');
+      showToast('Request rejected.', 'info');
     } catch (err) {
-      showToast(err.response?.data?.detail || 'Reddetme başarısız.', 'error');
+      showToast(err.response?.data?.detail || 'Rejection failed.', 'error');
     }
   }
 
@@ -367,7 +367,7 @@ function App() {
         <header className="topbar">
           <div className="topbar-left">
             <p className="eyebrow">Study Group Platform</p>
-            <h1>{selectedGroup?.name || 'Hoş Geldiniz'}</h1>
+            <h1>{selectedGroup?.name || 'Welcome'}</h1>
           </div>
           <div className="topbar-right">
             <div className={`status-pill ${apiState}`}>
@@ -385,22 +385,22 @@ function App() {
                   setActiveView('overview');
                 }}
               >
-                <option value="">Grup seçin…</option>
+                <option value="">Select group…</option>
                 {myGroups.map((g) => (
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
               </select>
             </div>
             {isOwner && pendingRequests.length > 0 && (
-              <div className="pending-badge" title="Bekleyen katılım istekleri">
+              <div className="pending-badge" title="Pending join requests">
                 <Icon name="users" />
-                <span>{pendingRequests.length} istek</span>
+                <span>{pendingRequests.length} pending</span>
               </div>
             )}
             <div className="user-info">
               <span className="user-name">{currentUser.fullName}</span>
               <button className="logout-button" type="button" onClick={handleLogout}>
-                Çıkış
+                Sign Out
               </button>
             </div>
           </div>
@@ -509,18 +509,18 @@ function MembershipGate({ isPending, onJoin }) {
     return (
       <div className="membership-gate">
         <div className="gate-icon"><Icon name="clock" /></div>
-        <h2>İsteğiniz İnceleniyor</h2>
-        <p>Grup admini katılım isteğinizi henüz onaylamamış. Onaylandıktan sonra içeriğe erişebilirsiniz.</p>
+        <h2>Your Request is Under Review</h2>
+        <p>The group admin has not approved your join request yet. You can access the content once approved.</p>
       </div>
     );
   }
   return (
     <div className="membership-gate">
       <div className="gate-icon"><Icon name="shield" /></div>
-      <h2>Bu Gruba Üye Değilsiniz</h2>
-      <p>İçeriğe erişmek için grup adminine katılım isteği gönderin.</p>
+      <h2>You Are Not a Member of This Group</h2>
+      <p>Send a join request to the group admin to access this content.</p>
       <button className="primary-button" type="button" onClick={onJoin}>
-        <Icon name="users" /> Katılım İste
+        <Icon name="users" /> Request to Join
       </button>
     </div>
   );
@@ -539,10 +539,10 @@ function Overview({ selectedGroup, groups, details, taskProgress, activePomodoro
     return (
       <div className="empty-state">
         <div className="empty-icon"><Icon name="users" /></div>
-        <h2>Henüz grup yok</h2>
-        <p>Başlamak için bir çalışma grubuna katılın veya yeni bir tane oluşturun.</p>
+        <h2>No group selected</h2>
+        <p>Join or create a study group to get started.</p>
         <button className="primary-button" onClick={() => setActiveView('groups')} type="button">
-          <Icon name="users" /> Gruplara Göz At
+          <Icon name="users" /> Browse Groups
         </button>
       </div>
     );
@@ -552,7 +552,7 @@ function Overview({ selectedGroup, groups, details, taskProgress, activePomodoro
     <div className="stack">
       {isOwner && pendingRequests.length > 0 && (
         <section className="panel pending-panel">
-          <PanelTitle title={`Bekleyen Katılım İstekleri (${pendingRequests.length})`} />
+          <PanelTitle title={`Pending Join Requests (${pendingRequests.length})`} />
           <div className="pending-list">
             {pendingRequests.map((req) => (
               <div key={req.userId} className="pending-row">
@@ -563,10 +563,10 @@ function Overview({ selectedGroup, groups, details, taskProgress, activePomodoro
                 </div>
                 <div className="pending-actions">
                   <button className="approve-button" type="button" onClick={() => onApprove(req.userId)}>
-                    Onayla
+                    Approve
                   </button>
                   <button className="reject-button" type="button" onClick={() => onReject(req.userId)}>
-                    Reddet
+                    Reject
                   </button>
                 </div>
               </div>
@@ -578,12 +578,12 @@ function Overview({ selectedGroup, groups, details, taskProgress, activePomodoro
       {!isMember && !isOwner && (
         <div className="membership-gate inline-gate">
           <div>
-            <h3>{isPending ? 'Katılım İsteğiniz Beklemede' : 'Bu Gruba Üye Değilsiniz'}</h3>
-            <p>{isPending ? 'Admin isteğinizi onaylayana kadar bekleyin.' : 'İçeriğe erişmek için katılım isteği gönderin.'}</p>
+            <h3>{isPending ? 'Your Join Request is Pending' : 'You Are Not a Member of This Group'}</h3>
+            <p>{isPending ? 'Wait for the admin to approve your request.' : 'Send a join request to access this content.'}</p>
           </div>
           {!isPending && (
             <button className="primary-button" type="button" onClick={onJoin}>
-              <Icon name="users" /> Katılım İste
+              <Icon name="users" /> Request to Join
             </button>
           )}
         </div>
@@ -693,9 +693,9 @@ function Groups({ groups, selectedGroupId, currentUserId, selectGroup, onJoin, s
               <div className="card-footer">
                 <span><Icon name="users" /> {group.memberCount || 0}/{group.maxMembers || '∞'}</span>
                 {group.myMembershipStatus === 'APPROVED'
-                  ? <span className="membership-chip approved">Üye</span>
+                  ? <span className="membership-chip approved">Member</span>
                   : group.myMembershipStatus === 'PENDING'
-                    ? <span className="membership-chip pending">Beklemede</span>
+                    ? <span className="membership-chip pending">Pending</span>
                     : group.ownerId === currentUserId
                       ? <span className="membership-chip owner">Admin</span>
                       : (
@@ -704,7 +704,7 @@ function Groups({ groups, selectedGroupId, currentUserId, selectGroup, onJoin, s
                           type="button"
                           onClick={(e) => { e.stopPropagation(); onJoin(group.id); }}
                         >
-                          <Icon name="users" /> Katıl
+                          <Icon name="users" /> Join
                         </button>
                       )
                 }
