@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -44,7 +45,10 @@ public class StudySessionService {
         session.setDescription(request.description());
         session.setStartsAt(request.startsAt());
         session.setEndsAt(request.endsAt());
-        session.setMeetingUrl(request.meetingUrl());
+        String meetingUrl = (request.meetingUrl() != null && !request.meetingUrl().isBlank())
+                ? request.meetingUrl()
+                : "https://meet.jit.si/studygroup-" + groupId + "-" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+        session.setMeetingUrl(meetingUrl);
         session.setCapacity(request.capacity());
 
         StudySession saved = sessionRepository.save(session);

@@ -1198,7 +1198,7 @@ a { text-decoration: none; }
   .brand { flex: 1; }
 
   .nav-list {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     flex: none;
     width: 100%;
   }
@@ -1676,6 +1676,95 @@ a { text-decoration: none; }
 }
 
 .kick-button:hover { background: var(--red-subtle); color: var(--red); }
+
+/* ─── Sessions ───────────────────────────────────── */
+
+.session-card {
+  background: var(--surface-soft);
+  border: 1px solid var(--line-soft);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  transition: box-shadow var(--transition);
+}
+
+.session-card:hover { box-shadow: var(--shadow-sm); }
+.session-card.live { border-left-color: var(--green); background: var(--green-subtle); }
+.session-card.ended { opacity: 0.65; }
+.session-card.cancelled { opacity: 0.45; }
+
+.session-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.session-info { flex: 1; min-width: 0; }
+.session-info h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.session-info p { color: var(--muted); font-size: 13px; line-height: 1.5; }
+
+.session-actions {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
+.session-badge {
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 3px 10px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.session-badge.scheduled { background: var(--primary-subtle); color: var(--primary-strong); }
+.session-badge.live { background: var(--green-subtle); color: #065f46; }
+.session-badge.ended { background: var(--line-soft); color: var(--muted); }
+.session-badge.cancelled { background: var(--red-subtle); color: var(--red); }
+
+.join-meeting-btn {
+  align-items: center;
+  background: var(--green);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 5px;
+  padding: 5px 12px;
+  transition: background var(--transition), box-shadow var(--transition);
+  white-space: nowrap;
+}
+
+.join-meeting-btn:hover { background: #059669; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+.join-meeting-btn .icon { height: 13px; width: 13px; }
+
+.session-meta {
+  align-items: center;
+  border-top: 1px solid var(--line-soft);
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 14px;
+  padding-top: 10px;
+}
+
+.session-meta span { align-items: center; display: flex; gap: 5px; }
+
+.form-hint {
+  background: var(--primary-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--primary-strong);
+  font-size: 12px;
+  padding: 8px 12px;
+}
 
 /* ─── Rail Member List ───────────────────────────── */
 
