@@ -2,13 +2,18 @@ import axios from 'axios';
 
 const AUTH_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
+const authClient = axios.create({
+  baseURL: AUTH_BASE,
+  timeout: 10000,
+});
+
 export function login(email, password) {
-  return axios.post(`${AUTH_BASE}/auth/login`, { email, password }).then((r) => r.data);
+  return authClient.post('/auth/login', { email, password }).then((r) => r.data);
 }
 
 export function register(fullName, email, password, university, department) {
-  return axios
-    .post(`${AUTH_BASE}/auth/register`, { fullName, email, password, university, department })
+  return authClient
+    .post('/auth/register', { fullName, email, password, university, department })
     .then((r) => r.data);
 }
 
