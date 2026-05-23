@@ -7,6 +7,16 @@ const client = axios.create({
   timeout: 3500,
 });
 
+client.interceptors.request.use((config) => {
+  try {
+    const user = JSON.parse(localStorage.getItem('studygroup_user'));
+    if (user?.accessToken) {
+      config.headers['Authorization'] = `Bearer ${user.accessToken}`;
+    }
+  } catch {}
+  return config;
+});
+
 export const apiBaseUrl = API_BASE_URL;
 
 export const api = {

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import './App.css';
 import { api, apiBaseUrl } from './services/apiClient';
+import { getStoredUser, saveUser, clearUser } from './services/authService';
+import AuthPage from './pages/AuthPage';
 import {
   demoGroups,
   demoMaterials,
@@ -40,6 +42,7 @@ const newGroupInitial = {
 };
 
 function App() {
+  const [currentUser, setCurrentUser] = useState(() => getStoredUser());
   const [activeView, setActiveView] = useState('overview');
   const [apiState, setApiState] = useState('checking');
   const [statusText, setStatusText] = useState('Checking backend…');
@@ -57,6 +60,16 @@ function App() {
   const [timerSeconds, setTimerSeconds] = useState(25 * 60);
   const [timerRunning, setTimerRunning] = useState(false);
   const [toast, setToast] = useState(null);
+
+  function handleAuth(user) {
+    saveUser(user);
+    setCurrentUser(user);
+  }
+
+  function handleLogout() {
+    clearUser();
+    setCurrentUser(null);
+  }
 
   function showToast(message, type = 'info') {
     setToast({ message, type });
@@ -229,7 +242,7 @@ function App() {
     try {
       const created = apiState === 'online'
         ? await api.sendMessage(selectedGroup.id, payload)
-        : { ...payload, id: Date.now(), groupId: selectedGroup.id, senderId: 1, senderName: 'You', sentAt: new Date().toISOString(), editedAt: null };
+        : { ...payload, id: Date.now(), groupId: selectedGroup.id, senderId: currentUser.userId, senderName: currentUser.fullName, sentAt: new Date().toISOString(), editedAt: null };
       addDetail('messages', created);
       setMessageText('');
     } catch {
@@ -258,6 +271,10 @@ function App() {
     } catch {
       showToast('Could not start timer.', 'error');
     }
+  }
+
+  if (!currentUser) {
+    return <AuthPage onAuth={handleAuth} />;
   }
 
   return (
@@ -315,6 +332,12 @@ function App() {
                 <span>{selectedGroup.memberCount || details.members.length} members</span>
               </div>
             )}
+            <div className="user-info">
+              <span className="user-name">{currentUser.fullName}</span>
+              <button className="logout-button" type="button" onClick={handleLogout}>
+                Çıkış
+              </button>
+            </div>
           </div>
         </header>
 
@@ -368,6 +391,7 @@ function App() {
             {activeView === 'chat' && (
               <Chat
                 messages={details.messages}
+                currentUser={currentUser}
                 messageText={messageText}
                 setMessageText={setMessageText}
                 submit={sendMessage}
@@ -649,7 +673,7 @@ function Materials({ materials, form, setForm, submit }) {
   );
 }
 
-function Chat({ messages, messageText, setMessageText, submit }) {
+function Chat({ messages, currentUser, messageText, setMessageText, submit }) {
   const sorted = [...messages].sort((a, b) => new Date(a.sentAt) - new Date(b.sentAt));
   return (
     <div className="stack">
@@ -657,7 +681,7 @@ function Chat({ messages, messageText, setMessageText, submit }) {
       <section className="chat-panel">
         <div className="messages">
           {sorted.length ? sorted.map((msg) => (
-            <article className={`message ${msg.senderName === 'You' ? 'mine' : ''}`} key={msg.id}>
+            <article className={`message ${msg.senderId === currentUser?.userId ? 'mine' : ''}`} key={msg.id}>
               <div className="message-meta">
                 <strong>{msg.senderName}</strong>
                 <span>{relative(msg.sentAt)}</span>
