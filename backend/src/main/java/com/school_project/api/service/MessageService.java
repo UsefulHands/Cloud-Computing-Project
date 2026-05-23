@@ -27,7 +27,7 @@ public class MessageService {
 
     @Transactional(readOnly = true)
     public List<MessageResponse> listMessages(Long groupId, Long beforeMessageId, Integer limit) {
-        groupService.findGroup(groupId);
+        groupService.requireApprovedMember(groupId);
         PageRequest pageRequest = PageRequest.of(0, normalizeLimit(limit));
         List<ChatMessage> messages = beforeMessageId == null
                 ? messageRepository.findByGroupIdOrderByCreatedAtDesc(groupId, pageRequest)
@@ -40,6 +40,7 @@ public class MessageService {
 
     @Transactional
     public MessageResponse sendMessage(Long groupId, SendMessageRequest request) {
+        groupService.requireApprovedMember(groupId);
         StudyGroup group = groupService.findGroup(groupId);
         StudentUser user = currentUserService.getCurrentUser();
         StudyMaterial material = request.materialId() == null ? null : materialService.findMaterial(groupId, request.materialId());

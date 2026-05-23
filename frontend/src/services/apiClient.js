@@ -48,4 +48,10 @@ export const api = {
   startPomodoro: (groupId, payload) => client.post(`/groups/${groupId}/pomodoros`, payload).then((response) => response.data),
   updatePomodoroStatus: (groupId, pomodoroId, payload) =>
     client.patch(`/groups/${groupId}/pomodoros/${pomodoroId}/status`, payload).then((response) => response.data),
+
+  listPendingRequests: (groupId) => client.get(`/groups/${groupId}/pending`).then((response) => response.data),
+  approveJoinRequest: (groupId, userId) =>
+    client.post(`/groups/${groupId}/members/${userId}/approve`).then((response) => response.data),
+  rejectJoinRequest: (groupId, userId) =>
+    client.delete(`/groups/${groupId}/members/${userId}/reject`).then((response) => response.data),
 };

@@ -51,7 +51,9 @@ public final class GroupDtos {
             Integer memberCount,
             List<String> tags,
             Long ownerId,
-            Instant createdAt
+            Instant createdAt,
+            String myMembershipStatus,
+            String myRole
     ) {
     }
 
@@ -60,7 +62,16 @@ public final class GroupDtos {
             String fullName,
             String email,
             MemberRole role,
+            String status,
             Instant joinedAt
+    ) {
+    }
+
+    public record JoinRequestResponse(
+            Long userId,
+            String fullName,
+            String email,
+            Instant requestedAt
     ) {
     }
 }

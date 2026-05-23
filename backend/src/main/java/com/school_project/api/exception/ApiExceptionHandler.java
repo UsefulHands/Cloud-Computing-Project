@@ -19,6 +19,11 @@ public class ApiExceptionHandler {
         return problem(HttpStatus.BAD_REQUEST, exception.getMessage());
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    ProblemDetail handleForbidden(ForbiddenException exception) {
+        return problem(HttpStatus.FORBIDDEN, exception.getMessage());
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     ProblemDetail handleDataIntegrity(DataIntegrityViolationException exception) {
         return problem(HttpStatus.CONFLICT, "Request conflicts with existing data.");

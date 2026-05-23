@@ -31,6 +31,11 @@ public class GroupMember extends BaseEntity {
         MEMBER
     }
 
+    public enum Status {
+        PENDING,
+        APPROVED
+    }
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "group_id")
     private StudyGroup group;
@@ -42,6 +47,10 @@ public class GroupMember extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role = Role.MEMBER;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Status status = Status.APPROVED;
 
     @Column(nullable = false)
     private Instant joinedAt = Instant.now();

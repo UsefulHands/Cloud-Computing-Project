@@ -11,11 +11,17 @@ import java.util.Optional;
 public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> {
     List<GroupMember> findByGroupId(Long groupId);
 
+    List<GroupMember> findByGroupIdAndStatus(Long groupId, GroupMember.Status status);
+
     int countByGroupId(Long groupId);
+
+    int countByGroupIdAndStatus(Long groupId, GroupMember.Status status);
 
     void deleteByGroupId(Long groupId);
 
     boolean existsByGroupAndUser(StudyGroup group, StudentUser user);
 
     Optional<GroupMember> findByGroupAndUser(StudyGroup group, StudentUser user);
+
+    Optional<GroupMember> findByGroupIdAndUserId(Long groupId, Long userId);
 }
