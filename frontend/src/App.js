@@ -16,6 +16,7 @@ import {
 const views = [
   ['overview', 'Overview', 'grid'],
   ['groups', 'Groups', 'users'],
+  ['sessions', 'Sessions', 'calendar'],
   ['workspace', 'Workspace', 'board'],
   ['materials', 'Materials', 'file'],
   ['chat', 'Chat', 'chat'],
@@ -29,6 +30,7 @@ const emptyDetails = {
   materials: [],
   messages: [],
   pomodoros: [],
+  sessions: [],
 };
 
 const newGroupInitial = {
@@ -58,6 +60,7 @@ function App() {
   const [materialForm, setMaterialForm] = useState({ title: '', description: '', type: 'LINK', url: '' });
   const [messageText, setMessageText] = useState('');
   const [focusForm, setFocusForm] = useState({ focusMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15, cycleCount: 4 });
+  const [sessionForm, setSessionForm] = useState({ title: '', description: '', startsAt: inputDate(60), endsAt: inputDate(180), capacity: '' });
   const [timerSeconds, setTimerSeconds] = useState(25 * 60);
   const [timerRunning, setTimerRunning] = useState(false);
   const [toast, setToast] = useState(null);
@@ -119,6 +122,7 @@ function App() {
         api.listMaterials(selectedGroupId),
         api.listMessages(selectedGroupId),
         api.listPomodoros(selectedGroupId),
+        api.listSessions(selectedGroupId),
       ]);
 
       if (!isActive) return;
@@ -129,6 +133,7 @@ function App() {
         materials: getArray(results[3], fallback.materials),
         messages: getArray(results[4], fallback.messages),
         pomodoros: getArray(results[5], fallback.pomodoros),
+        sessions: getArray(results[6], fallback.sessions),
       });
     }
 
@@ -337,6 +342,29 @@ function App() {
     }
   }
 
+  async function createSession(event) {
+    event.preventDefault();
+    if (!selectedGroup) return;
+    const payload = {
+      title: sessionForm.title,
+      description: sessionForm.description || null,
+      startsAt: new Date(sessionForm.startsAt).toISOString(),
+      endsAt: new Date(sessionForm.endsAt).toISOString(),
+      capacity: sessionForm.capacity ? Number(sessionForm.capacity) : null,
+      meetingUrl: null,
+    };
+    try {
+      const created = apiState === 'online'
+        ? await api.createSession(selectedGroup.id, payload)
+        : { ...payload, id: Date.now(), groupId: selectedGroup.id, status: 'SCHEDULED', attendeeCount: 1, createdBy: currentUser?.userId, createdAt: new Date().toISOString(), meetingUrl: `https://meet.jit.si/studygroup-demo-${Date.now()}` };
+      addDetail('sessions', created);
+      setSessionForm({ title: '', description: '', startsAt: inputDate(60), endsAt: inputDate(180), capacity: '' });
+      showToast('Session created!', 'success');
+    } catch {
+      showToast('Could not create session.', 'error');
+    }
+  }
+
   async function startPomodoro(event) {
     event.preventDefault();
     if (!selectedGroup) return;
@@ -484,6 +512,16 @@ function App() {
                 setForm={setGroupForm}
                 submit={createGroup}
               />
+            )}
+            {activeView === 'sessions' && (
+              isMember
+                ? <Sessions
+                    sessions={details.sessions}
+                    form={sessionForm}
+                    setForm={setSessionForm}
+                    submit={createSession}
+                  />
+                : <MembershipGate isPending={isPending} onJoin={() => handleJoinGroup(selectedGroupId)} visibility={selectedGroup?.visibility} />
             )}
             {activeView === 'workspace' && (
               isMember
@@ -1009,6 +1047,100 @@ function Focus({ activePomodoro, form, setForm, submit, timerSeconds, timerRunni
   );
 }
 
+function Sessions({ sessions, form, setForm, submit }) {
+  const upcoming = sessions
+    .filter((s) => s.status === 'SCHEDULED' || s.status === 'LIVE')
+    .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
+  const past = sessions.filter((s) => s.status === 'ENDED' || s.status === 'CANCELLED');
+
+  return (
+    <div className="stack">
+      <ViewTitle
+        eyebrow="Study Sessions"
+        title="Schedule and join group meetings"
+        description="Create sessions with auto-generated Jitsi video links. No account needed — just click Join Meeting."
+      />
+      <div className="two-column wide-left">
+        <div className="stack">
+          {upcoming.length > 0 && (
+            <section className="panel">
+              <PanelTitle title={`Upcoming (${upcoming.length})`} />
+              <div className="list">
+                {upcoming.map((s) => <SessionCard key={s.id} session={s} />)}
+              </div>
+            </section>
+          )}
+          {past.length > 0 && (
+            <section className="panel">
+              <PanelTitle title="Past Sessions" />
+              <div className="list">
+                {past.map((s) => <SessionCard key={s.id} session={s} />)}
+              </div>
+            </section>
+          )}
+          {sessions.length === 0 && (
+            <section className="panel">
+              <EmptyText text="No sessions scheduled yet. Create the first one!" />
+            </section>
+          )}
+        </div>
+        <form className="form-card" onSubmit={submit}>
+          <PanelTitle title="New Session" />
+          <Field label="Title">
+            <input required placeholder="e.g. Midterm Prep" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          </Field>
+          <Field label="Description">
+            <textarea rows="3" placeholder="What will you cover?" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          </Field>
+          <Field label="Starts At">
+            <input required type="datetime-local" value={form.startsAt} onChange={(e) => setForm({ ...form, startsAt: e.target.value })} />
+          </Field>
+          <Field label="Ends At">
+            <input required type="datetime-local" value={form.endsAt} onChange={(e) => setForm({ ...form, endsAt: e.target.value })} />
+          </Field>
+          <Field label="Capacity (optional)">
+            <input min="2" type="number" placeholder="Unlimited" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
+          </Field>
+          <p className="form-hint">A Jitsi Meet video link will be auto-generated.</p>
+          <button className="primary-button full" type="submit">
+            <Icon name="calendar" /> Create Session
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function SessionCard({ session }) {
+  const statusClass = { SCHEDULED: 'scheduled', LIVE: 'live', ENDED: 'ended', CANCELLED: 'cancelled' }[session.status] || '';
+  const isJoinable = session.status === 'SCHEDULED' || session.status === 'LIVE';
+  return (
+    <article className={`session-card ${statusClass}`}>
+      <div className="session-header">
+        <div className="session-info">
+          <h3>{session.title}</h3>
+          {session.description && <p>{session.description}</p>}
+        </div>
+        <div className="session-actions">
+          <span className={`session-badge ${statusClass}`}>{session.status}</span>
+          {isJoinable && session.meetingUrl && (
+            <a className="join-meeting-btn" href={session.meetingUrl} target="_blank" rel="noreferrer">
+              <Icon name="video" /> Join
+            </a>
+          )}
+        </div>
+      </div>
+      <div className="session-meta">
+        <span><Icon name="clock" /> {shortDate(session.startsAt)} → {shortDate(session.endsAt)}</span>
+        <span>
+          <Icon name="users" />
+          {session.capacity ? `${session.attendeeCount}/${session.capacity}` : `${session.attendeeCount} attending`}
+        </span>
+      </div>
+    </article>
+  );
+}
+
 function GroupProfile({ selectedGroup, members, progress, isOwner, isMember, currentUserId, onLeave, onKick }) {
   return (
     <section className="rail-card">
@@ -1149,6 +1281,7 @@ function demoDetails(groupId) {
     materials: demoMaterials[groupId] || [],
     messages: demoMessages[groupId] || [],
     pomodoros: demoPomodoros[groupId] || [],
+    sessions: [],
   };
 }
 
@@ -1203,6 +1336,8 @@ function Icon({ name }) {
     play: 'M5 3l14 9-14 9V3z',
     clock: 'M12 8v5l3 3M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0',
     star: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
+    calendar: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
+    video: 'M15 10l4.553-2.276A1 1 0 0 1 21 8.723v6.554a1 1 0 0 1-1.447.894L15 14M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z',
   };
   return (
     <svg aria-hidden="true" className="icon" fill="none" viewBox="0 0 24 24">
