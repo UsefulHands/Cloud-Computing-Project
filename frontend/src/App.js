@@ -221,6 +221,35 @@ function App() {
     }
   }
 
+  async function handleLeaveGroup() {
+    if (!selectedGroupId || apiState !== 'online') return;
+    try {
+      await api.leaveGroup(selectedGroupId);
+      const result = await api.listGroups();
+      const updated = Array.isArray(result) ? result : [];
+      setGroups(updated);
+      const firstJoined = updated.find((g) => g.myMembershipStatus === 'APPROVED');
+      setSelectedGroupId(firstJoined?.id ?? null);
+      setActiveView('overview');
+      showToast('You have left the group.', 'info');
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Could not leave group.', 'error');
+    }
+  }
+
+  async function handleKickMember(userId) {
+    if (!selectedGroupId) return;
+    try {
+      await api.kickMember(selectedGroupId, userId);
+      setDetails((cur) => ({ ...cur, members: cur.members.filter((m) => m.userId !== userId) }));
+      const result = await api.listGroups();
+      setGroups(Array.isArray(result) ? result : []);
+      showToast('Member removed from group.', 'info');
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Could not remove member.', 'error');
+    }
+  }
+
   async function createGroup(event) {
     event.preventDefault();
     const payload = {
@@ -428,10 +457,13 @@ function App() {
                 setActiveView={setActiveView}
                 isOwner={isOwner}
                 isMember={isMember}
+                currentUserId={currentUser?.userId}
                 pendingRequests={pendingRequests}
                 onApprove={handleApproveRequest}
                 onReject={handleRejectRequest}
                 onJoin={() => handleJoinGroup(selectedGroupId)}
+                onLeave={handleLeaveGroup}
+                onKick={handleKickMember}
                 isPending={isPending}
                 visibility={selectedGroup?.visibility}
               />
@@ -505,7 +537,16 @@ function App() {
           </section>
 
           <aside className="rail">
-            <GroupProfile selectedGroup={selectedGroup} members={details.members} progress={taskProgress} />
+            <GroupProfile
+              selectedGroup={selectedGroup}
+              members={details.members}
+              progress={taskProgress}
+              isOwner={isOwner}
+              isMember={isMember}
+              currentUserId={currentUser?.userId}
+              onLeave={handleLeaveGroup}
+              onKick={handleKickMember}
+            />
             <WorkspaceSummary tasks={details.tasks} notes={details.notes} setActiveView={setActiveView} />
             <MiniFocus activePomodoro={activePomodoro} seconds={timerSeconds} timerRunning={timerRunning} setActiveView={setActiveView} />
           </aside>
@@ -539,7 +580,7 @@ function MembershipGate({ isPending, onJoin, visibility }) {
 }
 
 function Overview({ selectedGroup, groups, details, taskProgress, activePomodoro, setActiveView,
-  isOwner, isMember, pendingRequests, onApprove, onReject, onJoin, isPending, visibility }) {
+  isOwner, isMember, currentUserId, pendingRequests, onApprove, onReject, onJoin, onLeave, onKick, isPending, visibility }) {
   const metrics = [
     { label: 'Groups', value: groups.length, detail: 'Available groups', icon: 'users', color: 'blue' },
     { label: 'Members', value: selectedGroup?.memberCount || details.members.length, detail: 'In this group', icon: 'shield', color: 'green' },
@@ -669,6 +710,36 @@ function Overview({ selectedGroup, groups, details, taskProgress, activePomodoro
           </div>
         </section>
       </div>
+
+      <section className="panel members-panel">
+        <div className="panel-title">
+          <h2>Group Members ({details.members.length})</h2>
+          {isMember && !isOwner && (
+            <button className="leave-button" type="button" onClick={onLeave}>
+              <Icon name="arrow" /> Leave Group
+            </button>
+          )}
+        </div>
+        <div className="member-list">
+          {details.members.length ? details.members.map((member) => (
+            <div key={member.userId} className="member-row">
+              <span className="member-avatar">{initials(member.fullName)}</span>
+              <div className="member-info">
+                <strong>{member.fullName}</strong>
+                <span>{member.email}</span>
+              </div>
+              <span className={`role-badge role-${member.role?.toLowerCase()}`}>
+                {member.role === 'OWNER' ? 'Admin' : member.role === 'MODERATOR' ? 'Moderator' : 'Member'}
+              </span>
+              {isOwner && member.userId !== currentUserId && (
+                <button className="kick-button" type="button" onClick={() => onKick(member.userId)}>
+                  Remove
+                </button>
+              )}
+            </div>
+          )) : <EmptyText text="No members yet." />}
+        </div>
+      </section>
     </div>
   );
 }
@@ -938,7 +1009,7 @@ function Focus({ activePomodoro, form, setForm, submit, timerSeconds, timerRunni
   );
 }
 
-function GroupProfile({ selectedGroup, members, progress }) {
+function GroupProfile({ selectedGroup, members, progress, isOwner, isMember, currentUserId, onLeave, onKick }) {
   return (
     <section className="rail-card">
       <PanelTitle title="Group Profile" />
@@ -955,12 +1026,27 @@ function GroupProfile({ selectedGroup, members, progress }) {
           <div className="progress-mini">
             <div className="progress-mini-fill" style={{ width: `${progress}%` }} />
           </div>
-          <div className="avatars">
-            {members.slice(0, 5).map((m) => (
-              <span key={m.userId} title={m.fullName}>{initials(m.fullName)}</span>
+          <div className="rail-members">
+            {members.map((m) => (
+              <div key={m.userId} className="rail-member-row">
+                <span className="rail-avatar" title={m.fullName}>{initials(m.fullName)}</span>
+                <div className="rail-member-info">
+                  <strong>{m.fullName}</strong>
+                  <span className={`role-badge-sm role-${m.role?.toLowerCase()}`}>
+                    {m.role === 'OWNER' ? 'Admin' : 'Member'}
+                  </span>
+                </div>
+                {isOwner && m.userId !== currentUserId && (
+                  <button className="kick-btn-sm" type="button" onClick={() => onKick(m.userId)} title="Remove member">×</button>
+                )}
+              </div>
             ))}
-            {members.length > 5 && <span className="avatar-more">+{members.length - 5}</span>}
           </div>
+          {isMember && !isOwner && (
+            <button className="leave-button full" type="button" onClick={onLeave}>
+              Leave Group
+            </button>
+          )}
         </>
       ) : <p className="no-group-text">Select a group to see its profile.</p>}
     </section>

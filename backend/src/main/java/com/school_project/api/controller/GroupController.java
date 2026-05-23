@@ -88,4 +88,10 @@ public class GroupController {
     public void rejectJoinRequest(@PathVariable Long groupId, @PathVariable Long userId) {
         groupService.rejectJoinRequest(groupId, userId);
     }
+
+    @DeleteMapping("/{groupId}/members/{userId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void kickMember(@PathVariable Long groupId, @PathVariable Long userId) {
+        groupService.kickMember(groupId, userId);
+    }
 }

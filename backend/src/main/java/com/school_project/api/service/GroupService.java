@@ -176,7 +176,22 @@ public class GroupService {
     public void leaveGroup(Long groupId) {
         StudyGroup group = findGroup(groupId);
         StudentUser user = currentUserService.getCurrentUser();
+        if (group.getOwner().getId().equals(user.getId())) {
+            throw new BadRequestException("The group owner cannot leave. Delete the group instead.");
+        }
         memberRepository.findByGroupAndUser(group, user).ifPresent(memberRepository::delete);
+    }
+
+    @Transactional
+    public void kickMember(Long groupId, Long userId) {
+        requireOwner(groupId);
+        StudyGroup group = findGroup(groupId);
+        if (group.getOwner().getId().equals(userId)) {
+            throw new BadRequestException("Cannot remove the group owner.");
+        }
+        GroupMember member = memberRepository.findByGroupIdAndUserId(groupId, userId)
+                .orElseThrow(() -> new NotFoundException("Member not found."));
+        memberRepository.delete(member);
     }
 
     @Transactional(readOnly = true)
