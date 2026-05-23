@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { login, register } from '../services/authService';
 
 const PASSWORD_RULES = [
-  { label: 'En az 8 karakter', test: (p) => p.length >= 8 },
-  { label: 'En az 1 büyük harf (A-Z)', test: (p) => /[A-Z]/.test(p) },
-  { label: 'En az 1 küçük harf (a-z)', test: (p) => /[a-z]/.test(p) },
-  { label: 'En az 1 rakam (0-9)', test: (p) => /[0-9]/.test(p) },
+  { label: 'At least 8 characters', test: (p) => p.length >= 8 },
+  { label: 'At least 1 uppercase letter (A-Z)', test: (p) => /[A-Z]/.test(p) },
+  { label: 'At least 1 lowercase letter (a-z)', test: (p) => /[a-z]/.test(p) },
+  { label: 'At least 1 number (0-9)', test: (p) => /[0-9]/.test(p) },
 ];
 
 function passwordIsValid(password) {
@@ -40,7 +40,7 @@ export default function AuthPage({ onAuth }) {
     setError('');
 
     if (tab === 'register' && !passwordIsValid(form.password)) {
-      setError('Şifre tüm gereksinimleri karşılamalıdır.');
+      setError('Password must meet all requirements.');
       setTouched({ password: true });
       return;
     }
@@ -57,9 +57,9 @@ export default function AuthPage({ onAuth }) {
       if (detail) {
         setError(detail);
       } else if (!err.response) {
-        setError('Sunucuya bağlanılamadı. Backend çalışıyor mu?');
+        setError('Could not connect to the server. Is the backend running?');
       } else {
-        setError('Bir hata oluştu. Lütfen tekrar deneyin.');
+        setError('An error occurred. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -93,24 +93,24 @@ export default function AuthPage({ onAuth }) {
             type="button"
             onClick={() => switchTab('login')}
           >
-            Giriş Yap
+            Sign In
           </button>
           <button
             className={`auth-tab ${tab === 'register' ? 'active' : ''}`}
             type="button"
             onClick={() => switchTab('register')}
           >
-            Kayıt Ol
+            Sign Up
           </button>
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
           {tab === 'register' && (
             <label className="field">
-              <span>Ad Soyad</span>
+              <span>Full Name</span>
               <input
                 required
-                placeholder="Adınız Soyadınız"
+                placeholder="Your Full Name"
                 value={form.fullName}
                 onChange={(e) => set('fullName', e.target.value)}
               />
@@ -118,18 +118,18 @@ export default function AuthPage({ onAuth }) {
           )}
 
           <label className="field">
-            <span>E-posta</span>
+            <span>Email</span>
             <input
               required
               type="email"
-              placeholder="ornek@mail.com"
+              placeholder="you@example.com"
               value={form.email}
               onChange={(e) => set('email', e.target.value)}
             />
           </label>
 
           <label className="field">
-            <span>Şifre</span>
+            <span>Password</span>
             <input
               required
               type="password"
@@ -156,26 +156,26 @@ export default function AuthPage({ onAuth }) {
 
           {tab === 'register' && !showRules && (
             <div className="password-hint">
-              <span>Şifre gereksinimleri: 8+ karakter, büyük/küçük harf ve rakam içermeli</span>
+              <span>Password requirements: 8+ characters, upper &amp; lowercase letters, and a number</span>
             </div>
           )}
 
           {tab === 'register' && (
             <>
               <label className="field">
-                <span>Üniversite</span>
+                <span>University</span>
                 <input
                   required
-                  placeholder="İstanbul Teknik Üniversitesi"
+                  placeholder="Your University"
                   value={form.university}
                   onChange={(e) => set('university', e.target.value)}
                 />
               </label>
               <label className="field">
-                <span>Bölüm</span>
+                <span>Department</span>
                 <input
                   required
-                  placeholder="Bilgisayar Mühendisliği"
+                  placeholder="Your Department"
                   value={form.department}
                   onChange={(e) => set('department', e.target.value)}
                 />
@@ -186,7 +186,7 @@ export default function AuthPage({ onAuth }) {
           {error && <p className="auth-error">{error}</p>}
 
           <button className="primary-button full" type="submit" disabled={loading}>
-            {loading ? 'Lütfen bekleyin…' : tab === 'login' ? 'Giriş Yap' : 'Hesap Oluştur'}
+            {loading ? 'Please wait…' : tab === 'login' ? 'Sign In' : 'Create Account'}
           </button>
         </form>
       </div>

@@ -21,7 +21,7 @@ public class AuthService {
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.email())) {
-            throw new BadRequestException("Bu e-posta adresi zaten kayıtlı.");
+            throw new BadRequestException("This email address is already registered.");
         }
 
         StudentUser user = new StudentUser();
@@ -37,10 +37,10 @@ public class AuthService {
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
         StudentUser user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new BadRequestException("Bu e-posta adresi ile kayıtlı kullanıcı bulunamadı."));
+                .orElseThrow(() -> new BadRequestException("No account found with this email address."));
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new BadRequestException("Şifre hatalı. Lütfen tekrar deneyin.");
+            throw new BadRequestException("Incorrect password. Please try again.");
         }
 
         return toResponse(user);

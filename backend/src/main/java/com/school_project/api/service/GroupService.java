@@ -114,14 +114,14 @@ public class GroupService {
         StudentUser user = currentUserService.getCurrentUser();
 
         if (group.getOwner().getId().equals(user.getId())) {
-            throw new BadRequestException("Bu grubun sahibisiniz, zaten üyesiniz.");
+            throw new BadRequestException("You are the owner of this group and are already a member.");
         }
 
         Optional<GroupMember> existing = memberRepository.findByGroupAndUser(group, user);
         if (existing.isPresent()) {
             GroupMember member = existing.get();
             if (member.getStatus() == GroupMember.Status.APPROVED) {
-                throw new BadRequestException("Bu gruba zaten üyesiniz.");
+                throw new BadRequestException("You are already a member of this group.");
             }
             return toMemberResponse(member);
         }
@@ -138,9 +138,9 @@ public class GroupService {
     public GroupMemberResponse approveJoinRequest(Long groupId, Long userId) {
         requireOwner(groupId);
         GroupMember member = memberRepository.findByGroupIdAndUserId(groupId, userId)
-                .orElseThrow(() -> new NotFoundException("Katılım isteği bulunamadı."));
+                .orElseThrow(() -> new NotFoundException("Join request not found."));
         if (member.getStatus() == GroupMember.Status.APPROVED) {
-            throw new BadRequestException("Bu kullanıcı zaten onaylanmış.");
+            throw new BadRequestException("This user is already approved.");
         }
         member.setStatus(GroupMember.Status.APPROVED);
         return toMemberResponse(memberRepository.save(member));
@@ -150,7 +150,7 @@ public class GroupService {
     public void rejectJoinRequest(Long groupId, Long userId) {
         requireOwner(groupId);
         GroupMember member = memberRepository.findByGroupIdAndUserId(groupId, userId)
-                .orElseThrow(() -> new NotFoundException("Katılım isteği bulunamadı."));
+                .orElseThrow(() -> new NotFoundException("Join request not found."));
         memberRepository.delete(member);
     }
 
@@ -189,14 +189,14 @@ public class GroupService {
         StudyGroup group = findGroup(groupId);
         memberRepository.findByGroupAndUser(group, user)
                 .filter(m -> m.getStatus() == GroupMember.Status.APPROVED)
-                .orElseThrow(() -> new ForbiddenException("Bu gruba erişim izniniz yok. Onaylı üye olmanız gerekiyor."));
+                .orElseThrow(() -> new ForbiddenException("You do not have access to this group. You must be an approved member."));
     }
 
     private void requireOwner(Long groupId) {
         StudentUser user = currentUserService.getCurrentUser();
         StudyGroup group = findGroup(groupId);
         if (!group.getOwner().getId().equals(user.getId())) {
-            throw new ForbiddenException("Bu işlem için grup admini olmanız gerekiyor.");
+            throw new ForbiddenException("You must be the group admin to perform this action.");
         }
     }
 
