@@ -27,12 +27,13 @@ public class PomodoroService {
 
     @Transactional(readOnly = true)
     public List<PomodoroSessionResponse> listPomodoros(Long groupId) {
-        groupService.findGroup(groupId);
+        groupService.requireApprovedMember(groupId);
         return pomodoroRepository.findByGroupIdOrderByCreatedAtDesc(groupId).stream().map(this::toResponse).toList();
     }
 
     @Transactional
     public PomodoroSessionResponse startPomodoro(Long groupId, StartPomodoroRequest request) {
+        groupService.requireApprovedMember(groupId);
         StudyGroup group = groupService.findGroup(groupId);
         StudentUser user = currentUserService.getCurrentUser();
         WorkspaceTask task = request.taskId() == null ? null : workspaceService.findTask(groupId, request.taskId());

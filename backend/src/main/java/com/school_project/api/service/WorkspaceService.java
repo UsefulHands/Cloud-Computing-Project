@@ -34,12 +34,13 @@ public class WorkspaceService {
 
     @Transactional(readOnly = true)
     public List<NoteResponse> listNotes(Long groupId) {
-        groupService.findGroup(groupId);
+        groupService.requireApprovedMember(groupId);
         return noteRepository.findByGroupIdOrderByUpdatedAtDesc(groupId).stream().map(this::toNoteResponse).toList();
     }
 
     @Transactional
     public NoteResponse createNote(Long groupId, UpsertNoteRequest request) {
+        groupService.requireApprovedMember(groupId);
         StudyGroup group = groupService.findGroup(groupId);
         StudentUser user = currentUserService.getCurrentUser();
 
@@ -67,12 +68,13 @@ public class WorkspaceService {
 
     @Transactional(readOnly = true)
     public List<TaskResponse> listTasks(Long groupId) {
-        groupService.findGroup(groupId);
+        groupService.requireApprovedMember(groupId);
         return taskRepository.findByGroupIdOrderByCreatedAtDesc(groupId).stream().map(this::toTaskResponse).toList();
     }
 
     @Transactional
     public TaskResponse createTask(Long groupId, CreateTaskRequest request) {
+        groupService.requireApprovedMember(groupId);
         StudyGroup group = groupService.findGroup(groupId);
         WorkspaceTask task = new WorkspaceTask();
         task.setGroup(group);

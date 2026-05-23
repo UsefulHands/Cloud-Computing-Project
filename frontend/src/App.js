@@ -49,6 +49,7 @@ function App() {
   const [groups, setGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState(null);
   const [details, setDetails] = useState(emptyDetails);
+  const [pendingRequests, setPendingRequests] = useState([]);
   const [search, setSearch] = useState('');
   const [subject, setSubject] = useState('All');
   const [groupForm, setGroupForm] = useState(newGroupInitial);
@@ -135,6 +136,13 @@ function App() {
   }, [apiState, selectedGroupId]);
 
   useEffect(() => {
+    if (!selectedGroupId || !isOwner || apiState !== 'online') { setPendingRequests([]); return; }
+    api.listPendingRequests(selectedGroupId)
+      .then(setPendingRequests)
+      .catch(() => setPendingRequests([]));
+  }, [selectedGroupId, isOwner, apiState]);
+
+  useEffect(() => {
     if (!timerRunning) return undefined;
     const interval = window.setInterval(() => {
       setTimerSeconds((s) => {
@@ -146,6 +154,10 @@ function App() {
   }, [timerRunning]);
 
   const selectedGroup = groups.find((g) => g.id === selectedGroupId) || null;
+  const isMember = selectedGroup?.myMembershipStatus === 'APPROVED';
+  const isPending = selectedGroup?.myMembershipStatus === 'PENDING';
+  const isOwner = !!currentUser && selectedGroup?.ownerId === currentUser.userId;
+  const myGroups = groups.filter((g) => g.myMembershipStatus === 'APPROVED');
   const subjects = useMemo(() => ['All', ...Array.from(new Set(groups.map((g) => g.subject).filter(Boolean)))], [groups]);
   const filteredGroups = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -161,6 +173,42 @@ function App() {
 
   function addDetail(type, item) {
     setDetails((cur) => ({ ...cur, [type]: [item, ...cur[type]] }));
+  }
+
+  async function handleJoinGroup(groupId) {
+    if (apiState !== 'online') { showToast('Backend bağlantısı gerekli.', 'error'); return; }
+    try {
+      await api.joinGroup(groupId);
+      const result = await api.listGroups();
+      setGroups(Array.isArray(result) ? result : []);
+      showToast('Katılım isteğiniz gönderildi!', 'success');
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Katılım isteği gönderilemedi.', 'error');
+    }
+  }
+
+  async function handleApproveRequest(userId) {
+    if (!selectedGroupId) return;
+    try {
+      await api.approveJoinRequest(selectedGroupId, userId);
+      setPendingRequests((cur) => cur.filter((r) => r.userId !== userId));
+      const result = await api.listGroups();
+      setGroups(Array.isArray(result) ? result : []);
+      showToast('Üyelik onaylandı.', 'success');
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Onaylama başarısız.', 'error');
+    }
+  }
+
+  async function handleRejectRequest(userId) {
+    if (!selectedGroupId) return;
+    try {
+      await api.rejectJoinRequest(selectedGroupId, userId);
+      setPendingRequests((cur) => cur.filter((r) => r.userId !== userId));
+      showToast('İstek reddedildi.', 'info');
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Reddetme başarısız.', 'error');
+    }
   }
 
   async function createGroup(event) {
@@ -319,17 +367,34 @@ function App() {
         <header className="topbar">
           <div className="topbar-left">
             <p className="eyebrow">Study Group Platform</p>
-            <h1>{selectedGroup?.name || 'Welcome'}</h1>
+            <h1>{selectedGroup?.name || 'Hoş Geldiniz'}</h1>
           </div>
           <div className="topbar-right">
             <div className={`status-pill ${apiState}`}>
               <span className="status-dot-sm" />
               <span>{statusText}</span>
             </div>
-            {selectedGroup && (
-              <div className="group-badge">
+            <div className="group-selector-wrapper">
+              <Icon name="users" />
+              <select
+                className="group-selector"
+                value={selectedGroupId || ''}
+                onChange={(e) => {
+                  const id = Number(e.target.value) || null;
+                  setSelectedGroupId(id);
+                  setActiveView('overview');
+                }}
+              >
+                <option value="">Grup seçin…</option>
+                {myGroups.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+            {isOwner && pendingRequests.length > 0 && (
+              <div className="pending-badge" title="Bekleyen katılım istekleri">
                 <Icon name="users" />
-                <span>{selectedGroup.memberCount || details.members.length} members</span>
+                <span>{pendingRequests.length} istek</span>
               </div>
             )}
             <div className="user-info">
@@ -351,13 +416,22 @@ function App() {
                 taskProgress={taskProgress}
                 activePomodoro={activePomodoro}
                 setActiveView={setActiveView}
+                isOwner={isOwner}
+                isMember={isMember}
+                pendingRequests={pendingRequests}
+                onApprove={handleApproveRequest}
+                onReject={handleRejectRequest}
+                onJoin={() => handleJoinGroup(selectedGroupId)}
+                isPending={isPending}
               />
             )}
             {activeView === 'groups' && (
               <Groups
                 groups={filteredGroups}
                 selectedGroupId={selectedGroupId}
+                currentUserId={currentUser?.userId}
                 selectGroup={(id) => { setSelectedGroupId(id); setActiveView('overview'); }}
+                onJoin={handleJoinGroup}
                 search={search}
                 setSearch={setSearch}
                 subjects={subjects}
@@ -369,45 +443,53 @@ function App() {
               />
             )}
             {activeView === 'workspace' && (
-              <Workspace
-                tasks={details.tasks}
-                notes={details.notes}
-                taskForm={taskForm}
-                setTaskForm={setTaskForm}
-                noteForm={noteForm}
-                setNoteForm={setNoteForm}
-                createTask={createTask}
-                createNote={createNote}
-              />
+              isMember
+                ? <Workspace
+                    tasks={details.tasks}
+                    notes={details.notes}
+                    taskForm={taskForm}
+                    setTaskForm={setTaskForm}
+                    noteForm={noteForm}
+                    setNoteForm={setNoteForm}
+                    createTask={createTask}
+                    createNote={createNote}
+                  />
+                : <MembershipGate isPending={isPending} onJoin={() => handleJoinGroup(selectedGroupId)} />
             )}
             {activeView === 'materials' && (
-              <Materials
-                materials={details.materials}
-                form={materialForm}
-                setForm={setMaterialForm}
-                submit={createMaterial}
-              />
+              isMember
+                ? <Materials
+                    materials={details.materials}
+                    form={materialForm}
+                    setForm={setMaterialForm}
+                    submit={createMaterial}
+                  />
+                : <MembershipGate isPending={isPending} onJoin={() => handleJoinGroup(selectedGroupId)} />
             )}
             {activeView === 'chat' && (
-              <Chat
-                messages={details.messages}
-                currentUser={currentUser}
-                messageText={messageText}
-                setMessageText={setMessageText}
-                submit={sendMessage}
-              />
+              isMember
+                ? <Chat
+                    messages={details.messages}
+                    currentUser={currentUser}
+                    messageText={messageText}
+                    setMessageText={setMessageText}
+                    submit={sendMessage}
+                  />
+                : <MembershipGate isPending={isPending} onJoin={() => handleJoinGroup(selectedGroupId)} />
             )}
             {activeView === 'focus' && (
-              <Focus
-                activePomodoro={activePomodoro}
-                form={focusForm}
-                setForm={setFocusForm}
-                submit={startPomodoro}
-                timerSeconds={timerSeconds}
-                timerRunning={timerRunning}
-                setTimerRunning={setTimerRunning}
-                reset={() => { setTimerRunning(false); setTimerSeconds(Number(focusForm.focusMinutes) * 60); }}
-              />
+              isMember
+                ? <Focus
+                    activePomodoro={activePomodoro}
+                    form={focusForm}
+                    setForm={setFocusForm}
+                    submit={startPomodoro}
+                    timerSeconds={timerSeconds}
+                    timerRunning={timerRunning}
+                    setTimerRunning={setTimerRunning}
+                    reset={() => { setTimerRunning(false); setTimerSeconds(Number(focusForm.focusMinutes) * 60); }}
+                  />
+                : <MembershipGate isPending={isPending} onJoin={() => handleJoinGroup(selectedGroupId)} />
             )}
           </section>
 
@@ -422,7 +504,30 @@ function App() {
   );
 }
 
-function Overview({ selectedGroup, groups, details, taskProgress, activePomodoro, setActiveView }) {
+function MembershipGate({ isPending, onJoin }) {
+  if (isPending) {
+    return (
+      <div className="membership-gate">
+        <div className="gate-icon"><Icon name="clock" /></div>
+        <h2>İsteğiniz İnceleniyor</h2>
+        <p>Grup admini katılım isteğinizi henüz onaylamamış. Onaylandıktan sonra içeriğe erişebilirsiniz.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="membership-gate">
+      <div className="gate-icon"><Icon name="shield" /></div>
+      <h2>Bu Gruba Üye Değilsiniz</h2>
+      <p>İçeriğe erişmek için grup adminine katılım isteği gönderin.</p>
+      <button className="primary-button" type="button" onClick={onJoin}>
+        <Icon name="users" /> Katılım İste
+      </button>
+    </div>
+  );
+}
+
+function Overview({ selectedGroup, groups, details, taskProgress, activePomodoro, setActiveView,
+  isOwner, isMember, pendingRequests, onApprove, onReject, onJoin, isPending }) {
   const metrics = [
     { label: 'Groups', value: groups.length, detail: 'Available groups', icon: 'users', color: 'blue' },
     { label: 'Members', value: selectedGroup?.memberCount || details.members.length, detail: 'In this group', icon: 'shield', color: 'green' },
@@ -434,10 +539,10 @@ function Overview({ selectedGroup, groups, details, taskProgress, activePomodoro
     return (
       <div className="empty-state">
         <div className="empty-icon"><Icon name="users" /></div>
-        <h2>No groups yet</h2>
-        <p>Create or join a study group to get started with collaborative learning.</p>
+        <h2>Henüz grup yok</h2>
+        <p>Başlamak için bir çalışma grubuna katılın veya yeni bir tane oluşturun.</p>
         <button className="primary-button" onClick={() => setActiveView('groups')} type="button">
-          <Icon name="users" /> Browse Groups
+          <Icon name="users" /> Gruplara Göz At
         </button>
       </div>
     );
@@ -445,6 +550,45 @@ function Overview({ selectedGroup, groups, details, taskProgress, activePomodoro
 
   return (
     <div className="stack">
+      {isOwner && pendingRequests.length > 0 && (
+        <section className="panel pending-panel">
+          <PanelTitle title={`Bekleyen Katılım İstekleri (${pendingRequests.length})`} />
+          <div className="pending-list">
+            {pendingRequests.map((req) => (
+              <div key={req.userId} className="pending-row">
+                <div className="pending-info">
+                  <strong>{req.fullName}</strong>
+                  <span>{req.email}</span>
+                  <span className="pending-time">{relative(req.requestedAt)}</span>
+                </div>
+                <div className="pending-actions">
+                  <button className="approve-button" type="button" onClick={() => onApprove(req.userId)}>
+                    Onayla
+                  </button>
+                  <button className="reject-button" type="button" onClick={() => onReject(req.userId)}>
+                    Reddet
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {!isMember && !isOwner && (
+        <div className="membership-gate inline-gate">
+          <div>
+            <h3>{isPending ? 'Katılım İsteğiniz Beklemede' : 'Bu Gruba Üye Değilsiniz'}</h3>
+            <p>{isPending ? 'Admin isteğinizi onaylayana kadar bekleyin.' : 'İçeriğe erişmek için katılım isteği gönderin.'}</p>
+          </div>
+          {!isPending && (
+            <button className="primary-button" type="button" onClick={onJoin}>
+              <Icon name="users" /> Katılım İste
+            </button>
+          )}
+        </div>
+      )}
+
       <section className="hero">
         <div className="hero-content">
           <p className="eyebrow">{selectedGroup.courseCode}</p>
@@ -511,7 +655,7 @@ function Overview({ selectedGroup, groups, details, taskProgress, activePomodoro
   );
 }
 
-function Groups({ groups, selectedGroupId, selectGroup, search, setSearch, subjects, subject, setSubject, form, setForm, submit }) {
+function Groups({ groups, selectedGroupId, currentUserId, selectGroup, onJoin, search, setSearch, subjects, subject, setSubject, form, setForm, submit }) {
   return (
     <div className="stack">
       <ViewTitle
@@ -548,7 +692,22 @@ function Groups({ groups, selectedGroupId, selectGroup, search, setSearch, subje
               </div>
               <div className="card-footer">
                 <span><Icon name="users" /> {group.memberCount || 0}/{group.maxMembers || '∞'}</span>
-                <span className="join-hint">Select <Icon name="arrow" /></span>
+                {group.myMembershipStatus === 'APPROVED'
+                  ? <span className="membership-chip approved">Üye</span>
+                  : group.myMembershipStatus === 'PENDING'
+                    ? <span className="membership-chip pending">Beklemede</span>
+                    : group.ownerId === currentUserId
+                      ? <span className="membership-chip owner">Admin</span>
+                      : (
+                        <button
+                          className="join-btn"
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); onJoin(group.id); }}
+                        >
+                          <Icon name="users" /> Katıl
+                        </button>
+                      )
+                }
               </div>
             </button>
           ))}

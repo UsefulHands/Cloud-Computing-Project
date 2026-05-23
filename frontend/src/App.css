@@ -1209,6 +1209,43 @@ a { text-decoration: none; }
   .two-column, .kanban { grid-template-columns: 1fr; }
 }
 
+/* ─── Password Rules ─────────────────────────────── */
+
+.password-rules {
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+}
+
+.pw-rule {
+  align-items: center;
+  display: flex;
+  font-size: 13px;
+  gap: 8px;
+}
+
+.pw-icon {
+  font-size: 13px;
+  font-weight: 700;
+  width: 16px;
+  text-align: center;
+}
+
+.pw-ok { color: var(--green); }
+.pw-fail { color: var(--muted-light); }
+.pw-ok .pw-icon { color: var(--green); }
+.pw-fail .pw-icon { color: #cbd5e1; }
+
+.password-hint {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 4px 2px;
+}
+
 /* ─── Auth Page ──────────────────────────────────── */
 
 .auth-shell {
@@ -1298,6 +1335,193 @@ a { text-decoration: none; }
   font-size: 13px;
   padding: 10px 14px;
 }
+
+/* ─── Group Selector ─────────────────────────────── */
+
+.group-selector-wrapper {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  display: flex;
+  gap: 8px;
+  padding: 6px 10px;
+}
+
+.group-selector {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  max-width: 180px;
+  outline: none;
+  cursor: pointer;
+}
+
+.pending-badge {
+  align-items: center;
+  background: var(--orange-subtle);
+  border: 1px solid #fcd34d;
+  border-radius: 999px;
+  color: #92400e;
+  display: flex;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 6px;
+  padding: 4px 12px;
+}
+
+/* ─── Membership Gate ────────────────────────────── */
+
+.membership-gate {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  justify-content: center;
+  min-height: 300px;
+  padding: 40px;
+  text-align: center;
+}
+
+.gate-icon {
+  background: var(--primary-subtle);
+  border-radius: 50%;
+  color: var(--primary);
+  height: 64px;
+  width: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gate-icon .icon { width: 28px; height: 28px; }
+
+.membership-gate h2 {
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.membership-gate p {
+  color: var(--muted);
+  max-width: 380px;
+}
+
+.inline-gate {
+  align-items: center;
+  background: var(--orange-subtle);
+  border: 1px solid #fcd34d;
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  justify-content: space-between;
+  min-height: auto;
+  padding: 16px 20px;
+  text-align: left;
+}
+
+.inline-gate h3 { font-size: 15px; font-weight: 700; color: #92400e; }
+.inline-gate p { font-size: 13px; color: #92400e; opacity: 0.8; margin-top: 4px; max-width: none; }
+
+/* ─── Pending Requests Panel ─────────────────────── */
+
+.pending-panel {
+  border: 1px solid #fcd34d;
+  background: var(--orange-subtle);
+}
+
+.pending-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pending-row {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 12px 16px;
+}
+
+.pending-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pending-info strong { font-size: 14px; color: var(--ink); }
+.pending-info span { font-size: 12px; color: var(--muted); }
+.pending-time { color: var(--muted-light) !important; }
+
+.pending-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.approve-button {
+  background: var(--green);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  transition: opacity var(--transition);
+}
+
+.approve-button:hover { opacity: 0.85; }
+
+.reject-button {
+  background: var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  transition: all var(--transition);
+}
+
+.reject-button:hover { background: var(--red-subtle); color: var(--red); }
+
+/* ─── Membership Chips & Join Button ─────────────── */
+
+.membership-chip {
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 3px 10px;
+  text-transform: uppercase;
+}
+
+.membership-chip.approved { background: var(--green-subtle); color: #065f46; }
+.membership-chip.pending { background: var(--orange-subtle); color: #92400e; }
+.membership-chip.owner { background: var(--primary-subtle); color: var(--primary-strong); }
+
+.join-btn {
+  align-items: center;
+  background: var(--primary);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 4px;
+  padding: 4px 12px;
+  transition: background var(--transition);
+}
+
+.join-btn:hover { background: var(--primary-strong); }
+.join-btn .icon { width: 12px; height: 12px; }
 
 /* ─── User Info / Logout ─────────────────────────── */
 

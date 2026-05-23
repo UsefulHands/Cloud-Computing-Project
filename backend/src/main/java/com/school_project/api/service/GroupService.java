@@ -4,11 +4,14 @@ import com.school_project.api.dto.GroupDtos.CreateGroupRequest;
 import com.school_project.api.dto.GroupDtos.GroupMemberResponse;
 import com.school_project.api.dto.GroupDtos.GroupResponse;
 import com.school_project.api.dto.GroupDtos.GroupVisibility;
+import com.school_project.api.dto.GroupDtos.JoinRequestResponse;
 import com.school_project.api.dto.GroupDtos.MemberRole;
 import com.school_project.api.dto.GroupDtos.UpdateGroupRequest;
 import com.school_project.api.entity.GroupMember;
 import com.school_project.api.entity.StudentUser;
 import com.school_project.api.entity.StudyGroup;
+import com.school_project.api.exception.BadRequestException;
+import com.school_project.api.exception.ForbiddenException;
 import com.school_project.api.exception.NotFoundException;
 import com.school_project.api.repository.ChatMessageRepository;
 import com.school_project.api.repository.GroupMemberRepository;
@@ -25,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +47,7 @@ public class GroupService {
 
     @Transactional(readOnly = true)
     public List<GroupResponse> listGroups(String subject, String search) {
+        StudentUser currentUser = currentUserService.getCurrentUser();
         List<StudyGroup> groups;
         if (subject != null && !subject.isBlank()) {
             groups = groupRepository.findBySubjectContainingIgnoreCase(subject);
@@ -51,7 +56,7 @@ public class GroupService {
         } else {
             groups = groupRepository.findAll();
         }
-        return groups.stream().map(this::toGroupResponse).toList();
+        return groups.stream().map(g -> toGroupResponse(g, currentUser)).toList();
     }
 
     @Transactional
@@ -68,22 +73,25 @@ public class GroupService {
         ownerMember.setGroup(savedGroup);
         ownerMember.setUser(owner);
         ownerMember.setRole(GroupMember.Role.OWNER);
+        ownerMember.setStatus(GroupMember.Status.APPROVED);
         memberRepository.save(ownerMember);
 
-        return toGroupResponse(savedGroup);
+        return toGroupResponse(savedGroup, owner);
     }
 
     @Transactional(readOnly = true)
     public GroupResponse getGroup(Long groupId) {
-        return toGroupResponse(findGroup(groupId));
+        StudentUser currentUser = currentUserService.getCurrentUser();
+        return toGroupResponse(findGroup(groupId), currentUser);
     }
 
     @Transactional
     public GroupResponse updateGroup(Long groupId, UpdateGroupRequest request) {
+        StudentUser currentUser = currentUserService.getCurrentUser();
         StudyGroup group = findGroup(groupId);
         applyCreateOrUpdate(group, request.name(), request.description(), request.courseCode(), request.subject(),
                 request.visibility(), request.maxMembers(), request.tags());
-        return toGroupResponse(groupRepository.save(group));
+        return toGroupResponse(groupRepository.save(group), currentUser);
     }
 
     @Transactional
@@ -105,15 +113,59 @@ public class GroupService {
         StudyGroup group = findGroup(groupId);
         StudentUser user = currentUserService.getCurrentUser();
 
-        GroupMember member = memberRepository.findByGroupAndUser(group, user).orElseGet(() -> {
-            GroupMember newMember = new GroupMember();
-            newMember.setGroup(group);
-            newMember.setUser(user);
-            newMember.setRole(GroupMember.Role.MEMBER);
-            return memberRepository.save(newMember);
-        });
+        if (group.getOwner().getId().equals(user.getId())) {
+            throw new BadRequestException("Bu grubun sahibisiniz, zaten üyesiniz.");
+        }
 
-        return toMemberResponse(member);
+        Optional<GroupMember> existing = memberRepository.findByGroupAndUser(group, user);
+        if (existing.isPresent()) {
+            GroupMember member = existing.get();
+            if (member.getStatus() == GroupMember.Status.APPROVED) {
+                throw new BadRequestException("Bu gruba zaten üyesiniz.");
+            }
+            return toMemberResponse(member);
+        }
+
+        GroupMember newMember = new GroupMember();
+        newMember.setGroup(group);
+        newMember.setUser(user);
+        newMember.setRole(GroupMember.Role.MEMBER);
+        newMember.setStatus(GroupMember.Status.PENDING);
+        return toMemberResponse(memberRepository.save(newMember));
+    }
+
+    @Transactional
+    public GroupMemberResponse approveJoinRequest(Long groupId, Long userId) {
+        requireOwner(groupId);
+        GroupMember member = memberRepository.findByGroupIdAndUserId(groupId, userId)
+                .orElseThrow(() -> new NotFoundException("Katılım isteği bulunamadı."));
+        if (member.getStatus() == GroupMember.Status.APPROVED) {
+            throw new BadRequestException("Bu kullanıcı zaten onaylanmış.");
+        }
+        member.setStatus(GroupMember.Status.APPROVED);
+        return toMemberResponse(memberRepository.save(member));
+    }
+
+    @Transactional
+    public void rejectJoinRequest(Long groupId, Long userId) {
+        requireOwner(groupId);
+        GroupMember member = memberRepository.findByGroupIdAndUserId(groupId, userId)
+                .orElseThrow(() -> new NotFoundException("Katılım isteği bulunamadı."));
+        memberRepository.delete(member);
+    }
+
+    @Transactional(readOnly = true)
+    public List<JoinRequestResponse> listPendingRequests(Long groupId) {
+        requireOwner(groupId);
+        return memberRepository.findByGroupIdAndStatus(groupId, GroupMember.Status.PENDING)
+                .stream()
+                .map(m -> new JoinRequestResponse(
+                        m.getUser().getId(),
+                        m.getUser().getFullName(),
+                        m.getUser().getEmail(),
+                        m.getJoinedAt()
+                ))
+                .toList();
     }
 
     @Transactional
@@ -126,7 +178,26 @@ public class GroupService {
     @Transactional(readOnly = true)
     public List<GroupMemberResponse> listMembers(Long groupId) {
         findGroup(groupId);
-        return memberRepository.findByGroupId(groupId).stream().map(this::toMemberResponse).toList();
+        return memberRepository.findByGroupIdAndStatus(groupId, GroupMember.Status.APPROVED)
+                .stream()
+                .map(this::toMemberResponse)
+                .toList();
+    }
+
+    public void requireApprovedMember(Long groupId) {
+        StudentUser user = currentUserService.getCurrentUser();
+        StudyGroup group = findGroup(groupId);
+        memberRepository.findByGroupAndUser(group, user)
+                .filter(m -> m.getStatus() == GroupMember.Status.APPROVED)
+                .orElseThrow(() -> new ForbiddenException("Bu gruba erişim izniniz yok. Onaylı üye olmanız gerekiyor."));
+    }
+
+    private void requireOwner(Long groupId) {
+        StudentUser user = currentUserService.getCurrentUser();
+        StudyGroup group = findGroup(groupId);
+        if (!group.getOwner().getId().equals(user.getId())) {
+            throw new ForbiddenException("Bu işlem için grup admini olmanız gerekiyor.");
+        }
     }
 
     public StudyGroup findGroup(Long groupId) {
@@ -151,7 +222,9 @@ public class GroupService {
         group.setTags(tags == null ? new ArrayList<>() : new ArrayList<>(tags));
     }
 
-    private GroupResponse toGroupResponse(StudyGroup group) {
+    private GroupResponse toGroupResponse(StudyGroup group, StudentUser currentUser) {
+        GroupMember myMembership = memberRepository.findByGroupAndUser(group, currentUser).orElse(null);
+        int approvedCount = memberRepository.countByGroupIdAndStatus(group.getId(), GroupMember.Status.APPROVED);
         return new GroupResponse(
                 group.getId(),
                 group.getName(),
@@ -160,10 +233,12 @@ public class GroupService {
                 group.getSubject(),
                 toDtoVisibility(group.getVisibility()),
                 group.getMaxMembers(),
-                memberRepository.countByGroupId(group.getId()),
+                approvedCount,
                 group.getTags(),
                 group.getOwner().getId(),
-                group.getCreatedAt()
+                group.getCreatedAt(),
+                myMembership == null ? null : myMembership.getStatus().name(),
+                myMembership == null ? null : myMembership.getRole().name()
         );
     }
 
@@ -174,6 +249,7 @@ public class GroupService {
                 user.getFullName(),
                 user.getEmail(),
                 MemberRole.valueOf(member.getRole().name()),
+                member.getStatus().name(),
                 member.getJoinedAt()
         );
     }

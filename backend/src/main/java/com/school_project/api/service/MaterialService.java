@@ -26,12 +26,13 @@ public class MaterialService {
 
     @Transactional(readOnly = true)
     public List<MaterialResponse> listMaterials(Long groupId) {
-        groupService.findGroup(groupId);
+        groupService.requireApprovedMember(groupId);
         return materialRepository.findByGroupIdOrderByCreatedAtDesc(groupId).stream().map(this::toResponse).toList();
     }
 
     @Transactional
     public MaterialResponse createMaterial(Long groupId, CreateMaterialRequest request) {
+        groupService.requireApprovedMember(groupId);
         StudyGroup group = groupService.findGroup(groupId);
         StudentUser user = currentUserService.getCurrentUser();
 

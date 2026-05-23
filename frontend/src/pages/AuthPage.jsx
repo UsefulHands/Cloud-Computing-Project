@@ -1,6 +1,17 @@
 import { useState } from 'react';
 import { login, register } from '../services/authService';
 
+const PASSWORD_RULES = [
+  { label: 'En az 8 karakter', test: (p) => p.length >= 8 },
+  { label: 'En az 1 büyük harf (A-Z)', test: (p) => /[A-Z]/.test(p) },
+  { label: 'En az 1 küçük harf (a-z)', test: (p) => /[a-z]/.test(p) },
+  { label: 'En az 1 rakam (0-9)', test: (p) => /[0-9]/.test(p) },
+];
+
+function passwordIsValid(password) {
+  return PASSWORD_RULES.every((r) => r.test(password));
+}
+
 export default function AuthPage({ onAuth }) {
   const [tab, setTab] = useState('login');
   const [form, setForm] = useState({
@@ -10,6 +21,7 @@ export default function AuthPage({ onAuth }) {
     university: '',
     department: '',
   });
+  const [touched, setTouched] = useState({ password: false });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -17,9 +29,22 @@ export default function AuthPage({ onAuth }) {
     setForm((f) => ({ ...f, [field]: value }));
   }
 
+  function switchTab(newTab) {
+    setTab(newTab);
+    setError('');
+    setTouched({ password: false });
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
+
+    if (tab === 'register' && !passwordIsValid(form.password)) {
+      setError('Şifre tüm gereksinimleri karşılamalıdır.');
+      setTouched({ password: true });
+      return;
+    }
+
     setLoading(true);
     try {
       const user =
@@ -28,11 +53,20 @@ export default function AuthPage({ onAuth }) {
           : await register(form.fullName, form.email, form.password, form.university, form.department);
       onAuth(user);
     } catch (err) {
-      setError(err.response?.data?.message || 'Bağlantı hatası. Backend çalışıyor mu?');
+      const detail = err.response?.data?.detail;
+      if (detail) {
+        setError(detail);
+      } else if (!err.response) {
+        setError('Sunucuya bağlanılamadı. Backend çalışıyor mu?');
+      } else {
+        setError('Bir hata oluştu. Lütfen tekrar deneyin.');
+      }
     } finally {
       setLoading(false);
     }
   }
+
+  const showRules = tab === 'register' && (touched.password || form.password.length > 0);
 
   return (
     <div className="auth-shell">
@@ -57,14 +91,14 @@ export default function AuthPage({ onAuth }) {
           <button
             className={`auth-tab ${tab === 'login' ? 'active' : ''}`}
             type="button"
-            onClick={() => { setTab('login'); setError(''); }}
+            onClick={() => switchTab('login')}
           >
             Giriş Yap
           </button>
           <button
             className={`auth-tab ${tab === 'register' ? 'active' : ''}`}
             type="button"
-            onClick={() => { setTab('register'); setError(''); }}
+            onClick={() => switchTab('register')}
           >
             Kayıt Ol
           </button>
@@ -102,8 +136,29 @@ export default function AuthPage({ onAuth }) {
               placeholder="••••••••"
               value={form.password}
               onChange={(e) => set('password', e.target.value)}
+              onBlur={() => tab === 'register' && setTouched({ password: true })}
             />
           </label>
+
+          {showRules && (
+            <div className="password-rules">
+              {PASSWORD_RULES.map((rule) => {
+                const ok = rule.test(form.password);
+                return (
+                  <div key={rule.label} className={`pw-rule ${ok ? 'pw-ok' : 'pw-fail'}`}>
+                    <span className="pw-icon">{ok ? '✓' : '✗'}</span>
+                    <span>{rule.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {tab === 'register' && !showRules && (
+            <div className="password-hint">
+              <span>Şifre gereksinimleri: 8+ karakter, büyük/küçük harf ve rakam içermeli</span>
+            </div>
+          )}
 
           {tab === 'register' && (
             <>

@@ -3,6 +3,7 @@ package com.school_project.api.controller;
 import com.school_project.api.dto.GroupDtos.CreateGroupRequest;
 import com.school_project.api.dto.GroupDtos.GroupMemberResponse;
 import com.school_project.api.dto.GroupDtos.GroupResponse;
+import com.school_project.api.dto.GroupDtos.JoinRequestResponse;
 import com.school_project.api.dto.GroupDtos.UpdateGroupRequest;
 import com.school_project.api.service.GroupService;
 import lombok.RequiredArgsConstructor;
@@ -70,5 +71,21 @@ public class GroupController {
     @GetMapping("/{groupId}/members")
     public List<GroupMemberResponse> listMembers(@PathVariable Long groupId) {
         return groupService.listMembers(groupId);
+    }
+
+    @GetMapping("/{groupId}/pending")
+    public List<JoinRequestResponse> listPendingRequests(@PathVariable Long groupId) {
+        return groupService.listPendingRequests(groupId);
+    }
+
+    @PostMapping("/{groupId}/members/{userId}/approve")
+    public GroupMemberResponse approveJoinRequest(@PathVariable Long groupId, @PathVariable Long userId) {
+        return groupService.approveJoinRequest(groupId, userId);
+    }
+
+    @DeleteMapping("/{groupId}/members/{userId}/reject")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void rejectJoinRequest(@PathVariable Long groupId, @PathVariable Long userId) {
+        groupService.rejectJoinRequest(groupId, userId);
     }
 }
