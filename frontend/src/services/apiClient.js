@@ -49,6 +49,9 @@ export const api = {
   updatePomodoroStatus: (groupId, pomodoroId, payload) =>
     client.patch(`/groups/${groupId}/pomodoros/${pomodoroId}/status`, payload).then((response) => response.data),
 
+  leaveGroup: (groupId) => client.delete(`/groups/${groupId}/leave`).then((response) => response.data),
+  kickMember: (groupId, userId) => client.delete(`/groups/${groupId}/members/${userId}`).then((response) => response.data),
+
   listPendingRequests: (groupId) => client.get(`/groups/${groupId}/pending`).then((response) => response.data),
   approveJoinRequest: (groupId, userId) =>
     client.post(`/groups/${groupId}/members/${userId}/approve`).then((response) => response.data),
