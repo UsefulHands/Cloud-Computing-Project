@@ -86,7 +86,8 @@ function App() {
         if (!isActive) return;
         const remoteGroups = Array.isArray(result) ? result : [];
         setGroups(remoteGroups);
-        setSelectedGroupId(remoteGroups[0]?.id ?? null);
+        const firstJoined = remoteGroups.find((g) => g.myMembershipStatus === 'APPROVED');
+        setSelectedGroupId(firstJoined?.id ?? null);
         setApiState('online');
         setStatusText(remoteGroups.length ? 'Backend connected' : 'Connected — no groups yet');
       } catch {
@@ -177,13 +178,22 @@ function App() {
 
   async function handleJoinGroup(groupId) {
     if (apiState !== 'online') { showToast('Backend connection required.', 'error'); return; }
+    const targetGroup = groups.find((g) => g.id === groupId);
+    const isPublic = targetGroup?.visibility === 'PUBLIC';
     try {
       await api.joinGroup(groupId);
       const result = await api.listGroups();
-      setGroups(Array.isArray(result) ? result : []);
-      showToast('Join request sent!', 'success');
+      const updated = Array.isArray(result) ? result : [];
+      setGroups(updated);
+      if (isPublic) {
+        setSelectedGroupId(groupId);
+        setActiveView('overview');
+        showToast('You have joined the group!', 'success');
+      } else {
+        showToast('Join request sent! Waiting for admin approval.', 'success');
+      }
     } catch (err) {
-      showToast(err.response?.data?.detail || 'Could not send join request.', 'error');
+      showToast(err.response?.data?.detail || 'Could not process join request.', 'error');
     }
   }
 
@@ -423,6 +433,7 @@ function App() {
                 onReject={handleRejectRequest}
                 onJoin={() => handleJoinGroup(selectedGroupId)}
                 isPending={isPending}
+                visibility={selectedGroup?.visibility}
               />
             )}
             {activeView === 'groups' && (
@@ -454,7 +465,7 @@ function App() {
                     createTask={createTask}
                     createNote={createNote}
                   />
-                : <MembershipGate isPending={isPending} onJoin={() => handleJoinGroup(selectedGroupId)} />
+                : <MembershipGate isPending={isPending} onJoin={() => handleJoinGroup(selectedGroupId)} visibility={selectedGroup?.visibility} />
             )}
             {activeView === 'materials' && (
               isMember
@@ -464,7 +475,7 @@ function App() {
                     setForm={setMaterialForm}
                     submit={createMaterial}
                   />
-                : <MembershipGate isPending={isPending} onJoin={() => handleJoinGroup(selectedGroupId)} />
+                : <MembershipGate isPending={isPending} onJoin={() => handleJoinGroup(selectedGroupId)} visibility={selectedGroup?.visibility} />
             )}
             {activeView === 'chat' && (
               isMember
@@ -475,7 +486,7 @@ function App() {
                     setMessageText={setMessageText}
                     submit={sendMessage}
                   />
-                : <MembershipGate isPending={isPending} onJoin={() => handleJoinGroup(selectedGroupId)} />
+                : <MembershipGate isPending={isPending} onJoin={() => handleJoinGroup(selectedGroupId)} visibility={selectedGroup?.visibility} />
             )}
             {activeView === 'focus' && (
               isMember
@@ -489,7 +500,7 @@ function App() {
                     setTimerRunning={setTimerRunning}
                     reset={() => { setTimerRunning(false); setTimerSeconds(Number(focusForm.focusMinutes) * 60); }}
                   />
-                : <MembershipGate isPending={isPending} onJoin={() => handleJoinGroup(selectedGroupId)} />
+                : <MembershipGate isPending={isPending} onJoin={() => handleJoinGroup(selectedGroupId)} visibility={selectedGroup?.visibility} />
             )}
           </section>
 
@@ -504,7 +515,8 @@ function App() {
   );
 }
 
-function MembershipGate({ isPending, onJoin }) {
+function MembershipGate({ isPending, onJoin, visibility }) {
+  const isPublic = visibility === 'PUBLIC';
   if (isPending) {
     return (
       <div className="membership-gate">
@@ -518,16 +530,16 @@ function MembershipGate({ isPending, onJoin }) {
     <div className="membership-gate">
       <div className="gate-icon"><Icon name="shield" /></div>
       <h2>You Are Not a Member of This Group</h2>
-      <p>Send a join request to the group admin to access this content.</p>
+      <p>{isPublic ? 'Click below to join this public group instantly.' : 'Send a join request to the group admin to access this content.'}</p>
       <button className="primary-button" type="button" onClick={onJoin}>
-        <Icon name="users" /> Request to Join
+        <Icon name="users" /> {isPublic ? 'Join Group' : 'Request to Join'}
       </button>
     </div>
   );
 }
 
 function Overview({ selectedGroup, groups, details, taskProgress, activePomodoro, setActiveView,
-  isOwner, isMember, pendingRequests, onApprove, onReject, onJoin, isPending }) {
+  isOwner, isMember, pendingRequests, onApprove, onReject, onJoin, isPending, visibility }) {
   const metrics = [
     { label: 'Groups', value: groups.length, detail: 'Available groups', icon: 'users', color: 'blue' },
     { label: 'Members', value: selectedGroup?.memberCount || details.members.length, detail: 'In this group', icon: 'shield', color: 'green' },
@@ -579,11 +591,17 @@ function Overview({ selectedGroup, groups, details, taskProgress, activePomodoro
         <div className="membership-gate inline-gate">
           <div>
             <h3>{isPending ? 'Your Join Request is Pending' : 'You Are Not a Member of This Group'}</h3>
-            <p>{isPending ? 'Wait for the admin to approve your request.' : 'Send a join request to access this content.'}</p>
+            <p>
+              {isPending
+                ? 'Wait for the admin to approve your request.'
+                : visibility === 'PUBLIC'
+                  ? 'This is a public group. Click to join instantly.'
+                  : 'Send a join request to the admin to access this content.'}
+            </p>
           </div>
           {!isPending && (
             <button className="primary-button" type="button" onClick={onJoin}>
-              <Icon name="users" /> Request to Join
+              <Icon name="users" /> {visibility === 'PUBLIC' ? 'Join Group' : 'Request to Join'}
             </button>
           )}
         </div>
@@ -704,7 +722,7 @@ function Groups({ groups, selectedGroupId, currentUserId, selectGroup, onJoin, s
                           type="button"
                           onClick={(e) => { e.stopPropagation(); onJoin(group.id); }}
                         >
-                          <Icon name="users" /> Join
+                          <Icon name="users" /> {group.visibility === 'PUBLIC' ? 'Join' : 'Request to Join'}
                         </button>
                       )
                 }

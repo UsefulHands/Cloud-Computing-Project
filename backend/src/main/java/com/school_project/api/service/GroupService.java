@@ -126,11 +126,15 @@ public class GroupService {
             return toMemberResponse(member);
         }
 
+        GroupMember.Status status = group.getVisibility() == StudyGroup.Visibility.PUBLIC
+                ? GroupMember.Status.APPROVED
+                : GroupMember.Status.PENDING;
+
         GroupMember newMember = new GroupMember();
         newMember.setGroup(group);
         newMember.setUser(user);
         newMember.setRole(GroupMember.Role.MEMBER);
-        newMember.setStatus(GroupMember.Status.PENDING);
+        newMember.setStatus(status);
         return toMemberResponse(memberRepository.save(newMember));
     }
 
