@@ -37,7 +37,7 @@ public class WorkspaceService {
         groupService.requireApprovedMember(groupId);
         return noteRepository.findByGroupIdOrderByUpdatedAtDesc(groupId).stream().map(this::toNoteResponse).toList();
     }
-
+    //Create, Update, Delete Note & Task
     @Transactional
     public NoteResponse createNote(Long groupId, UpsertNoteRequest request) {
         groupService.requireApprovedMember(groupId);
