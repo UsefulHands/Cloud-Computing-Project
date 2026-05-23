@@ -1093,10 +1093,10 @@ function Sessions({ sessions, form, setForm, submit }) {
             <textarea rows="3" placeholder="What will you cover?" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </Field>
           <Field label="Starts At">
-            <input required type="datetime-local" value={form.startsAt} onChange={(e) => setForm({ ...form, startsAt: e.target.value })} />
+            <input required type="datetime-local" step="60" value={form.startsAt} onChange={(e) => setForm({ ...form, startsAt: e.target.value })} />
           </Field>
           <Field label="Ends At">
-            <input required type="datetime-local" value={form.endsAt} onChange={(e) => setForm({ ...form, endsAt: e.target.value })} />
+            <input required type="datetime-local" step="60" value={form.endsAt} onChange={(e) => setForm({ ...form, endsAt: e.target.value })} />
           </Field>
           <Field label="Capacity (optional)">
             <input min="2" type="number" placeholder="Unlimited" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
