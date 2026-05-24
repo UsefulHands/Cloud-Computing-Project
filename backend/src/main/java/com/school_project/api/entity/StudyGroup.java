@@ -14,6 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,7 +23,7 @@ import java.util.List;
 @NoArgsConstructor
 @Entity
 @Table(name = "study_groups")
-public class StudyGroup extends BaseEntity {
+public class StudyGroup extends BaseEntity implements Serializable {
 
     public enum Visibility {
         PUBLIC,

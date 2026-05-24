@@ -7,12 +7,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.io.Serializable;
+
 @Getter
 @Setter
 @NoArgsConstructor
 @Entity
 @Table(name = "student_users")
-public class StudentUser extends BaseEntity {
+public class StudentUser extends BaseEntity implements Serializable {
 
     @Column(nullable = false)
     private String fullName;
