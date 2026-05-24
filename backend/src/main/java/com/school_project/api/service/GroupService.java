@@ -23,6 +23,8 @@ import com.school_project.api.repository.StudySessionRepository;
 import com.school_project.api.repository.WorkspaceNoteRepository;
 import com.school_project.api.repository.WorkspaceTaskRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +48,7 @@ public class GroupService {
     private final CurrentUserService currentUserService;
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "groups", key = "'all'")
     public List<GroupResponse> listGroups(String subject, String search) {
         StudentUser currentUser = currentUserService.getCurrentUser();
         List<StudyGroup> groups;
@@ -60,6 +63,7 @@ public class GroupService {
     }
 
     @Transactional
+    @CacheEvict(value = "groups", allEntries = true)
     public GroupResponse createGroup(CreateGroupRequest request) {
         StudentUser owner = currentUserService.getCurrentUser();
 
@@ -80,12 +84,14 @@ public class GroupService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "groups", key = "#groupId")
     public GroupResponse getGroup(Long groupId) {
         StudentUser currentUser = currentUserService.getCurrentUser();
         return toGroupResponse(findGroup(groupId), currentUser);
     }
 
     @Transactional
+    @CacheEvict(value = "groups", allEntries = true)
     public GroupResponse updateGroup(Long groupId, UpdateGroupRequest request) {
         StudentUser currentUser = currentUserService.getCurrentUser();
         StudyGroup group = findGroup(groupId);
@@ -95,6 +101,7 @@ public class GroupService {
     }
 
     @Transactional
+    @CacheEvict(value = "groups", allEntries = true)
     public void deleteGroup(Long groupId) {
         StudyGroup group = findGroup(groupId);
         pomodoroRepository.deleteByGroupId(groupId);
@@ -109,6 +116,7 @@ public class GroupService {
     }
 
     @Transactional
+    @CacheEvict(value = "groups", allEntries = true)
     public GroupMemberResponse joinGroup(Long groupId) {
         StudyGroup group = findGroup(groupId);
         StudentUser user = currentUserService.getCurrentUser();
@@ -195,6 +203,7 @@ public class GroupService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "groupMembers", key = "#groupId")
     public List<GroupMemberResponse> listMembers(Long groupId) {
         findGroup(groupId);
         return memberRepository.findByGroupIdAndStatus(groupId, GroupMember.Status.APPROVED)
