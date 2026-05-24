@@ -4,11 +4,11 @@ import java.io.Serializable;
 import java.time.Instant;
 import java.util.List;
 
-public final class GroupDtos {
+public final class GroupDtos implements Serializable{
     private GroupDtos() {
     }
 
-    public enum GroupVisibility {
+    public enum GroupVisibility implements Serializable{
         PUBLIC,
         PRIVATE
     }
