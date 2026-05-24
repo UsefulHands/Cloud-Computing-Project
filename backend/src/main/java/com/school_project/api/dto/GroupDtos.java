@@ -1,5 +1,6 @@
 package com.school_project.api.dto;
 
+import java.io.Serializable;
 import java.time.Instant;
 import java.util.List;
 
@@ -26,7 +27,7 @@ public final class GroupDtos {
             GroupVisibility visibility,
             Integer maxMembers,
             List<String> tags
-    ) {
+    ) implements Serializable {
     }
 
     public record UpdateGroupRequest(
@@ -37,7 +38,7 @@ public final class GroupDtos {
             GroupVisibility visibility,
             Integer maxMembers,
             List<String> tags
-    ) {
+    ) implements Serializable{
     }
 
     public record GroupResponse(
@@ -54,7 +55,7 @@ public final class GroupDtos {
             Instant createdAt,
             String myMembershipStatus,
             String myRole
-    ) {
+    ) implements Serializable {
     }
 
     public record GroupMemberResponse(
@@ -64,7 +65,7 @@ public final class GroupDtos {
             MemberRole role,
             String status,
             Instant joinedAt
-    ) {
+    ) implements Serializable{
     }
 
     public record JoinRequestResponse(
@@ -72,6 +73,6 @@ public final class GroupDtos {
             String fullName,
             String email,
             Instant requestedAt
-    ) {
+    ) implements Serializable{
     }
 }
