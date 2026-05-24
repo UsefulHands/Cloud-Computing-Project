@@ -13,7 +13,7 @@ public final class GroupDtos implements Serializable{
         PRIVATE
     }
 
-    public enum MemberRole {
+    public enum MemberRole implements Serializable{
         OWNER,
         MODERATOR,
         MEMBER
